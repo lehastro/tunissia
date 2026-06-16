@@ -422,7 +422,7 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin
   flex-direction: column;
   gap: .35rem;
 }
-.history li {
+.history__item {
   display: grid;
   grid-template-columns: 28px 1fr auto;
   gap: .6rem;
@@ -435,11 +435,85 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin
 .history__n { color: var(--ink-3); font-weight: 600; }
 .history__teams { color: var(--ink-2); }
 .history__teams .win { color: var(--ink); font-weight: 600; }
+
+/* Счёт как кликабельная кнопка — клик открывает редактирование */
 .history__score {
   font-family: var(--fs-display);
   font-weight: 700;
   color: var(--ink);
   font-variant-numeric: tabular-nums;
+  font-size: .95rem;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: .2rem .5rem;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.history__score:hover {
+  background: var(--surface);
+  border-color: var(--sand-deep);
+}
+
+/* Режим редактирования */
+.history__item--editing {
+  background: oklch(75% .17 60 / .08);
+  border: 1px solid oklch(75% .17 60 / .35);
+}
+.history__edit {
+  display: flex;
+  align-items: center;
+  gap: .25rem;
+}
+.history__edit-score {
+  width: 48px;
+  text-align: center;
+  font-family: var(--fs-display);
+  font-weight: 700;
+  font-size: .95rem;
+  padding: .35rem .25rem;
+  background: var(--surface);
+  border: 1px solid var(--sand-deep);
+  border-radius: 6px;
+  color: var(--ink);
+  outline: none;
+}
+.history__edit-score:focus {
+  border-color: var(--sun);
+  box-shadow: 0 0 0 2px oklch(75% .17 60 / .2);
+}
+.history__edit-sep {
+  font-family: var(--fs-display);
+  font-weight: 700;
+  color: var(--ink-3);
+}
+.history__edit-ok,
+.history__edit-cancel {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--sand-deep);
+  background: var(--surface);
+  color: var(--ink-2);
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  -webkit-tap-highlight-color: transparent;
+}
+.history__edit-ok {
+  background: oklch(80% .14 145);
+  color: white;
+  border-color: oklch(70% .14 145);
+}
+.history__edit-cancel:hover {
+  border-color: oklch(60% .15 25);
+  color: oklch(50% .17 25);
 }
 
 /* ============================================

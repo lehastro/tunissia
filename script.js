@@ -233,29 +233,117 @@ function renderMatrix(targetId, showCardId) {
   target.innerHTML = html;
 }
 
+// Индекс партии, которую сейчас редактируем (-1 если ничего)
+let editingMatchIdx = -1;
+
 function renderHistory() {
   const card = $('#history-card');
   if (state.results.length === 0) {
-    card.hidden = true;
+    if (card) card.hidden = true;
+    editingMatchIdx = -1;
     return;
   }
-  card.hidden = false;
-  const list = $('#history-list');
+  if (card) card.hidden = false;
   // Показываем в обратном порядке: последняя партия сверху
   const items = state.results.map((r, idx) => {
     const m = SCHEDULE[idx];
     const aWin = r.a > r.b;
     const aHtml = `<span class="${aWin ? 'win' : ''}">${escapeHtml(teamLabel(m.a))}</span>`;
     const bHtml = `<span class="${!aWin ? 'win' : ''}">${escapeHtml(teamLabel(m.b))}</span>`;
+
+    if (idx === editingMatchIdx) {
+      // Режим редактирования: счёт превращается в два инпута
+      return `
+        <li class="history__item history__item--editing" data-idx="${idx}">
+          <span class="history__n">#${idx + 1}</span>
+          <span class="history__teams">${escapeHtml(teamLabel(m.a))} <small>vs</small> ${escapeHtml(teamLabel(m.b))}</span>
+          <span class="history__edit">
+            <input type="number" class="history__edit-score" data-team="a" value="${r.a}" min="0" max="30" inputmode="numeric">
+            <span class="history__edit-sep">:</span>
+            <input type="number" class="history__edit-score" data-team="b" value="${r.b}" min="0" max="30" inputmode="numeric">
+            <button type="button" class="history__edit-ok" data-idx="${idx}" aria-label="Сохранить">✓</button>
+            <button type="button" class="history__edit-cancel" aria-label="Отмена">×</button>
+          </span>
+        </li>
+      `;
+    }
+
     return `
-      <li>
+      <li class="history__item" data-idx="${idx}">
         <span class="history__n">#${idx + 1}</span>
         <span class="history__teams">${aHtml} <small>vs</small> ${bHtml}</span>
-        <span class="history__score">${r.a}:${r.b}</span>
+        <button type="button" class="history__score" data-idx="${idx}" aria-label="Изменить счёт">${r.a}:${r.b}</button>
       </li>
     `;
   }).reverse().join('');
-  list.innerHTML = items;
+  // Рендерим в оба списка (один на game-view, второй на done-view)
+  document.querySelectorAll('#history-list-game, #history-list-done').forEach(el => {
+    el.innerHTML = items;
+  });
+}
+
+function onHistoryClick(e) {
+  const t = e.target;
+
+  // Клик по счёту → открыть в режим редактирования
+  if (t.classList.contains('history__score')) {
+    editingMatchIdx = parseInt(t.dataset.idx, 10);
+    renderHistory();
+    // Сфокусируемся на первом инпуте новой строки
+    const firstInput = document.querySelector('.history__item--editing .history__edit-score');
+    if (firstInput) { firstInput.focus(); firstInput.select(); }
+    return;
+  }
+
+  // ✓ — сохранить изменения
+  if (t.classList.contains('history__edit-ok')) {
+    saveEdit(parseInt(t.dataset.idx, 10));
+    return;
+  }
+
+  // × — отменить
+  if (t.classList.contains('history__edit-cancel')) {
+    editingMatchIdx = -1;
+    renderHistory();
+    return;
+  }
+}
+
+function onHistoryKeydown(e) {
+  if (!e.target.classList.contains('history__edit-score')) return;
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const li = e.target.closest('.history__item--editing');
+    if (li) saveEdit(parseInt(li.dataset.idx, 10));
+  } else if (e.key === 'Escape') {
+    editingMatchIdx = -1;
+    renderHistory();
+  }
+}
+
+function saveEdit(idx) {
+  const li = document.querySelector(`.history__item--editing[data-idx="${idx}"]`);
+  if (!li) return;
+  const inputs = li.querySelectorAll('.history__edit-score');
+  const a = parseInt(inputs[0].value, 10);
+  const b = parseInt(inputs[1].value, 10);
+  if (Number.isNaN(a) || Number.isNaN(b) || a < 0 || b < 0) {
+    alert('Счёт — целые числа от 0');
+    return;
+  }
+  if (a === b) {
+    alert('Ничьих не бывает — кто-то должен выиграть');
+    return;
+  }
+  state.results[idx] = { a, b };
+  save();
+  editingMatchIdx = -1;
+  // Перерисовываем всё что зависит от результатов
+  renderHistory();
+  renderStandings();
+  renderMatrix('matrix-game', 'matrix-card');
+  // Если мы на финальном экране — обновим и его
+  if (state.phase === 'done') renderDone();
 }
 
 function renderDone() {
@@ -286,6 +374,7 @@ function renderDone() {
   }).join('');
 
   renderMatrix('matrix-done');
+  renderHistory();
 }
 
 function escapeHtml(s) {
@@ -410,6 +499,13 @@ function init() {
   $('#undo-btn').addEventListener('click', onUndo);
   $('#reset-btn').addEventListener('click', onReset);
   $('#restart-btn').addEventListener('click', onReset);
+
+  // Делегированные обработчики для редактирования истории —
+  // подключаем к обоим спискам (game-view и done-view)
+  document.querySelectorAll('#history-list-game, #history-list-done').forEach(list => {
+    list.addEventListener('click', onHistoryClick);
+    list.addEventListener('keydown', onHistoryKeydown);
+  });
 
   // Enter в поле счёта = сохранить
   ['#score-a', '#score-b'].forEach(sel => {

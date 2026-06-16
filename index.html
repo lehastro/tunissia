@@ -33,7 +33,7 @@
     <section class="view view--setup" id="view-setup">
       <div class="card card--intro">
         <h2 class="card__title">5 игроков, 15 партий</h2>
-        <p class="card__lead">Каждый играет 12 партий и сидит 3. Партии до 11 очков. Партнёры меняются по жёсткому расписанию — каждый сыграет с каждым по 3 раза.</p>
+        <p class="card__lead">Каждый играет 12 партий и сидит 3. Партнёры меняются по жёсткому расписанию — каждый сыграет с каждым по 3 раза.</p>
       </div>
 
       <form class="card card--setup" id="setup-form">
@@ -95,10 +95,11 @@
         <p class="standings__hint">П = победы · ± = разница очков · Игр = сыграно из 12</p>
       </div>
 
-      <!-- История партий -->
+      <!-- История партий (с возможностью править счёт) -->
       <div class="card card--history" id="history-card" hidden>
         <h3 class="card__heading">Сыграно</h3>
-        <ol class="history" id="history-list"></ol>
+        <p class="standings__hint">Нажми на счёт чтобы поправить</p>
+        <ol class="history" id="history-list-game"></ol>
       </div>
 
       <!-- Полная матрица по партиям -->
@@ -143,13 +144,20 @@
         </div>
       </div>
 
+      <!-- История с возможностью править счёт (на случай опечатки задним числом) -->
+      <div class="card card--history">
+        <h3 class="card__heading">Сыграно</h3>
+        <p class="standings__hint">Нажми на счёт чтобы поправить</p>
+        <ol class="history" id="history-list-done"></ol>
+      </div>
+
       <button class="btn btn--primary btn--big" id="restart-btn">Новый турнир</button>
     </section>
 
   </main>
 
   <footer class="footer">
-    <p>5 игроков · 15 партий · до 11 очков</p>
+    <p>5 игроков · 15 партий · ротация партнёров</p>
   </footer>
 
   <script src="script.js"></script>
