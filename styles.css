@@ -628,6 +628,62 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin
 }
 
 /* ============================================
+   ПРАЗДНИЧНАЯ АНИМАЦИЯ ЗАВЕРШЕНИЯ ТУРНИРА
+   1) Солнечные лучи за трофеем — статика, появляются по классу
+   2) Песчинки поднимаются снизу — отдельный canvas-слой
+   ============================================ */
+.celebration-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 100; /* поверх всего, но под нав-меню */
+}
+
+/* Солнечные лучи за трофеем (📍 .podium__crown) */
+.podium__crown {
+  position: relative;
+  display: inline-block;
+  z-index: 0;
+}
+.podium__crown::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 240px;
+  height: 240px;
+  transform: translate(-50%, -50%) scale(.3) rotate(-20deg);
+  background: repeating-conic-gradient(
+    from 15deg,
+    var(--sun) 0deg 4deg,
+    transparent 4deg 30deg
+  );
+  -webkit-mask: radial-gradient(circle, transparent 18%, black 30% 70%, transparent 90%);
+          mask: radial-gradient(circle, transparent 18%, black 30% 70%, transparent 90%);
+  opacity: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+.card--podium.is-celebrating .podium__crown::before {
+  animation: sunburst 1.4s cubic-bezier(.2, .7, .3, 1) forwards;
+}
+@keyframes sunburst {
+  0%   { opacity: 0;   transform: translate(-50%, -50%) scale(.3) rotate(-20deg); }
+  60%  { opacity: .55; transform: translate(-50%, -50%) scale(1.05) rotate(8deg); }
+  100% { opacity: .45; transform: translate(-50%, -50%) scale(1) rotate(0); }
+}
+/* Уважаем prefers-reduced-motion — без анимации, лучи просто появляются */
+@media (prefers-reduced-motion: reduce) {
+  .card--podium.is-celebrating .podium__crown::before {
+    animation: none;
+    opacity: .4;
+    transform: translate(-50%, -50%);
+  }
+}
+
+/* ============================================
    ИТОГИ — ПОДИУМ
    ============================================ */
 .podium__crown {

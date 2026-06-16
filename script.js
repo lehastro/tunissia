@@ -44,13 +44,38 @@ function load() {
     if (!raw) return;
     const parsed = JSON.parse(raw);
     if (parsed && Array.isArray(parsed.players) && parsed.players.length === PLAYERS_COUNT) {
+      // Чистка от старого бага: если в localStorage лежит ТОЧНОЕ
+      // совпадение с демо-данными (юзер когда-то открыл ?demo=1 в
+      // предыдущей версии где демо писалось в storage), считаем что
+      // это не его данные и сбрасываемся. Совпадение с демо при
+      // реальной игре практически невозможно — 15 точных счётов.
+      if (isStaleDemo(parsed)) {
+        localStorage.removeItem(STORAGE_KEY);
+        return;
+      }
       state = { ...state, ...parsed };
     }
   } catch (e) {
     console.warn('localStorage load failed:', e);
   }
 }
+
+function isStaleDemo(s) {
+  if (!s || s.phase !== 'done') return false;
+  const demoPlayers = ['Стас', 'Денис', 'Леха', 'ВАВА', 'Макс'];
+  if (s.players.join(',') !== demoPlayers.join(',')) return false;
+  if (!Array.isArray(s.results) || s.results.length !== 15) return false;
+  const demoScores = [
+    [5,11],[11,8],[11,5],[6,11],[11,10],[9,11],[10,11],[11,10],
+    [9,11],[11,10],[10,11],[8,11],[8,11],[11,4],[11,7]
+  ];
+  return s.results.every((r, i) => r.a === demoScores[i][0] && r.b === demoScores[i][1]);
+}
 function save() {
+  // В demo-режиме НЕ пишем в localStorage — иначе перетрём данные
+  // юзера, если он откроет демо-ссылку поверх своего турнира.
+  // Все изменения в демо остаются в памяти и пропадают при reload.
+  if (isDemoMode) return;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch (e) {
@@ -59,8 +84,20 @@ function save() {
 }
 function reset() {
   state = { players: ['', '', '', '', ''], results: [], phase: 'setup' };
+  isDemoMode = false;
+  // Срываем ?demo=1 из URL чтобы случайный reload не вернул демо
+  try {
+    const url = new URL(location.href);
+    if (url.searchParams.has('demo')) {
+      url.searchParams.delete('demo');
+      history.replaceState(null, '', url.toString());
+    }
+  } catch (e) { /* history API недоступен — не критично */ }
   save();
 }
+
+// Флаг что мы в режиме демо-просмотра — никаких записей в localStorage
+let isDemoMode = false;
 
 /* ============================================================
    ВЫЧИСЛЕНИЯ — табло из state.results
@@ -131,12 +168,14 @@ function renderSetup() {
 function renderGame() {
   const matchIdx = state.results.length;
 
-  // Если все 15 сыграны — переход в done
+  // Если все 15 сыграны — переход в done + праздничная анимация
   if (matchIdx >= SCHEDULE.length) {
     state.phase = 'done';
     save();
     showView('done');
     renderDone();
+    // celebrate только при переходе game→done, не при reload на done
+    celebrate();
     return;
   }
 
@@ -469,8 +508,105 @@ function onReset() {
    BOOTSTRAP
    ============================================================ */
 /* ============================================================
+   ПЛЯЖНОЕ ПРАЗДНОВАНИЕ — солнечные лучи + песчинки
+   Запускается ровно один раз: при переходе с game на done.
+   Не запускается при перезагрузке страницы (уже на done).
+   ============================================================ */
+function celebrate() {
+  // Уважаем prefers-reduced-motion — лучи через CSS-overflow покажутся,
+  // песчинки пропускаем чтобы не дёргать слабые машины.
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // 1) Солнечные лучи за трофеем — добавляем класс на карточку
+  const card = document.querySelector('.card--podium');
+  if (card) {
+    card.classList.add('is-celebrating');
+    // Снять класс через 4с чтобы не оставался на DOM навсегда
+    setTimeout(() => card.classList.remove('is-celebrating'), 4000);
+  }
+
+  // 2) Песчинки на canvas — снизу вверх, разные оттенки песка
+  if (reduced) return;
+  const canvas = document.getElementById('celebration-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width  = innerWidth  * dpr;
+  canvas.height = innerHeight * dpr;
+  canvas.style.width  = innerWidth + 'px';
+  canvas.style.height = innerHeight + 'px';
+  ctx.scale(dpr, dpr);
+
+  const colors = [
+    'oklch(82% .12 80)',  // warm sand
+    'oklch(86% .15 85)',  // golden
+    'oklch(78% .17 70)',  // burnt orange sand
+    'oklch(90% .08 90)',  // pale
+  ];
+
+  const particles = [];
+  const total = 120;  // больше частиц для плотности — но мельче
+  for (let i = 0; i < total; i++) {
+    particles.push({
+      x: Math.random() * innerWidth,
+      y: innerHeight + 10 + Math.random() * 60,
+      r: 0.4 + Math.random() * 0.9,  // 0.4-1.3 — тонкий песок
+      vy: -0.3 - Math.random() * 0.8,
+      wobble: Math.random() * Math.PI * 2,
+      wobbleSpeed: 0.015 + Math.random() * 0.025,
+      wobbleAmp: 0.3 + Math.random() * 0.7,
+      color: colors[(Math.random() * colors.length) | 0],
+      maxAlpha: 0.3 + Math.random() * 0.4,
+      delay: i * 22, // постепенный спавн, ~2.6с
+    });
+  }
+
+  const startTs = performance.now();
+  const totalDuration = 4200;
+
+  function tick(now) {
+    const elapsed = now - startTs;
+    ctx.clearRect(0, 0, innerWidth, innerHeight);
+
+    let aliveCount = 0;
+    for (const p of particles) {
+      if (elapsed < p.delay) continue;
+      // движение: вверх + горизонтальный wobble
+      p.wobble += p.wobbleSpeed;
+      p.y += p.vy;
+      const x = p.x + Math.sin(p.wobble) * p.wobbleAmp * 18;
+
+      // прозрачность: фейд-ин снизу, фейд-аут наверху
+      const lifeProgress = 1 - (p.y / innerHeight);
+      let alpha = p.maxAlpha;
+      if (lifeProgress < 0.08) alpha *= lifeProgress / 0.08;
+      else if (lifeProgress > 0.75) alpha *= Math.max(0, (1 - lifeProgress) / 0.25);
+
+      if (p.y < -10 || alpha <= 0) continue;
+      aliveCount++;
+
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    if (elapsed < totalDuration && aliveCount + 5 > 0) {
+      requestAnimationFrame(tick);
+    } else {
+      ctx.clearRect(0, 0, innerWidth, innerHeight);
+    }
+  }
+  requestAnimationFrame(tick);
+}
+
+/* ============================================================
    DEMO MODE — ?demo=1 заливает данные с реальной бумажки
-   (Стас, Денис, Леха, ВАВА, Макс — все 15 партий)
+   (Стас, Денис, Леха, ВАВА, Макс — все 15 партий).
+   Важно: демо живёт ТОЛЬКО в памяти. localStorage не трогается,
+   иначе при открытии демо-ссылки поверх своего турнира юзера
+   мы стирали бы его данные. Все правки в демо — на одну сессию.
    ============================================================ */
 function loadDemo() {
   state = {
@@ -494,7 +630,8 @@ function loadDemo() {
     ],
     phase: 'done'
   };
-  save();
+  isDemoMode = true;
+  // НЕ ВЫЗЫВАЕМ save() — оставляем localStorage чистым
 }
 
 function init() {
