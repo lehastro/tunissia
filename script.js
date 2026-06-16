@@ -285,19 +285,26 @@ function renderHistory() {
 function onHistoryClick(e) {
   const t = e.target;
 
-  // Клик по счёту → открыть в режим редактирования
+  // Клик по счёту → открыть в режим редактирования.
+  // Запоминаем список (game/done), куда юзер кликнул, чтобы потом
+  // сфокусироваться именно на видимом инпуте, а не на дубликате.
   if (t.classList.contains('history__score')) {
     editingMatchIdx = parseInt(t.dataset.idx, 10);
+    const myList = t.closest('.history');
     renderHistory();
-    // Сфокусируемся на первом инпуте новой строки
-    const firstInput = document.querySelector('.history__item--editing .history__edit-score');
-    if (firstInput) { firstInput.focus(); firstInput.select(); }
+    if (myList) {
+      const input = myList.querySelector('.history__item--editing .history__edit-score');
+      if (input) { input.focus(); input.select(); }
+    }
     return;
   }
 
-  // ✓ — сохранить изменения
+  // ✓ — сохранить. Берём li из клика (а не глобальным querySelector),
+  // потому что в DOM два одинаковых элемента — на game-view и done-view,
+  // юзер видел/редактировал только один из них.
   if (t.classList.contains('history__edit-ok')) {
-    saveEdit(parseInt(t.dataset.idx, 10));
+    const li = t.closest('.history__item--editing');
+    if (li) saveEditFromLi(li);
     return;
   }
 
@@ -314,16 +321,15 @@ function onHistoryKeydown(e) {
   if (e.key === 'Enter') {
     e.preventDefault();
     const li = e.target.closest('.history__item--editing');
-    if (li) saveEdit(parseInt(li.dataset.idx, 10));
+    if (li) saveEditFromLi(li);
   } else if (e.key === 'Escape') {
     editingMatchIdx = -1;
     renderHistory();
   }
 }
 
-function saveEdit(idx) {
-  const li = document.querySelector(`.history__item--editing[data-idx="${idx}"]`);
-  if (!li) return;
+function saveEditFromLi(li) {
+  const idx = parseInt(li.dataset.idx, 10);
   const inputs = li.querySelectorAll('.history__edit-score');
   const a = parseInt(inputs[0].value, 10);
   const b = parseInt(inputs[1].value, 10);
