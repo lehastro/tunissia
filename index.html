@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#f4d9a0">
+  <title>Тунисский формат — Турнир</title>
+  <meta name="description" content="Табло для турнира по пляжному волейболу в тунисском формате — 5 игроков, 15 партий, ротация партнёров.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Bricolage+Grotesque:wght@500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Декоративный пляжный фон: солнце + волны -->
+  <div class="bg-deco" aria-hidden="true">
+    <div class="bg-deco__sun"></div>
+    <div class="bg-deco__waves"></div>
+  </div>
+
+  <header class="topbar">
+    <h1 class="topbar__title">
+      <span class="topbar__chip">🏐</span>
+      Тунисский формат
+    </h1>
+    <button class="topbar__reset" id="reset-btn" hidden>Новый турнир</button>
+  </header>
+
+  <main class="container">
+
+    <!-- ===== Экран 1: ввод имён ===== -->
+    <section class="view view--setup" id="view-setup">
+      <div class="card card--intro">
+        <h2 class="card__title">5 игроков, 15 партий</h2>
+        <p class="card__lead">Каждый играет 12 партий и сидит 3. Партии до 11 очков. Партнёры меняются по жёсткому расписанию — каждый сыграет с каждым по 3 раза.</p>
+      </div>
+
+      <form class="card card--setup" id="setup-form">
+        <h3 class="card__heading">Имена игроков</h3>
+        <div class="setup__fields">
+          <input type="text" class="input input--name" data-idx="0" maxlength="20" placeholder="Игрок 1" required autocomplete="off">
+          <input type="text" class="input input--name" data-idx="1" maxlength="20" placeholder="Игрок 2" required autocomplete="off">
+          <input type="text" class="input input--name" data-idx="2" maxlength="20" placeholder="Игрок 3" required autocomplete="off">
+          <input type="text" class="input input--name" data-idx="3" maxlength="20" placeholder="Игрок 4" required autocomplete="off">
+          <input type="text" class="input input--name" data-idx="4" maxlength="20" placeholder="Игрок 5" required autocomplete="off">
+        </div>
+        <button type="submit" class="btn btn--primary btn--big">Начать турнир</button>
+      </form>
+    </section>
+
+    <!-- ===== Экран 2: текущая партия + табло ===== -->
+    <section class="view view--game" id="view-game" hidden>
+
+      <!-- Текущая партия -->
+      <div class="card card--match" id="match-card">
+        <div class="match__head">
+          <span class="match__num" id="match-num"></span>
+          <span class="match__sit" id="match-sit"></span>
+        </div>
+        <div class="match__teams">
+          <div class="team" id="team-a">
+            <div class="team__label">Команда А</div>
+            <div class="team__players" id="team-a-players"></div>
+            <input type="number" class="input input--score" id="score-a" inputmode="numeric" min="0" max="30" placeholder="—" autocomplete="off">
+          </div>
+          <div class="match__vs">vs</div>
+          <div class="team" id="team-b">
+            <div class="team__label">Команда Б</div>
+            <div class="team__players" id="team-b-players"></div>
+            <input type="number" class="input input--score" id="score-b" inputmode="numeric" min="0" max="30" placeholder="—" autocomplete="off">
+          </div>
+        </div>
+        <div class="match__actions">
+          <button class="btn btn--ghost" id="undo-btn" disabled>← Назад</button>
+          <button class="btn btn--primary" id="save-btn">Сохранить →</button>
+        </div>
+      </div>
+
+      <!-- Live-табло -->
+      <div class="card card--standings">
+        <h3 class="card__heading">Табло</h3>
+        <table class="standings" id="standings">
+          <thead>
+            <tr>
+              <th class="standings__rank">#</th>
+              <th class="standings__name">Игрок</th>
+              <th class="standings__wins">П</th>
+              <th class="standings__diff">±</th>
+              <th class="standings__played">Игр</th>
+            </tr>
+          </thead>
+          <tbody id="standings-body"></tbody>
+        </table>
+        <p class="standings__hint">П = победы · ± = разница очков · Игр = сыграно из 12</p>
+      </div>
+
+      <!-- История партий -->
+      <div class="card card--history" id="history-card" hidden>
+        <h3 class="card__heading">Сыграно</h3>
+        <ol class="history" id="history-list"></ol>
+      </div>
+
+      <!-- Полная матрица по партиям -->
+      <div class="card card--matrix" id="matrix-card" hidden>
+        <h3 class="card__heading">Полная таблица</h3>
+        <div class="matrix-scroll">
+          <table class="matrix" id="matrix-game"></table>
+        </div>
+        <p class="standings__hint">↔ прокрути по горизонтали · цифра — разница очков игрока в этой партии</p>
+      </div>
+
+    </section>
+
+    <!-- ===== Экран 3: итог ===== -->
+    <section class="view view--done" id="view-done" hidden>
+      <div class="card card--podium">
+        <div class="podium__crown">🏆</div>
+        <h2 class="card__title">Турнир завершён</h2>
+        <ol class="podium" id="podium"></ol>
+      </div>
+
+      <div class="card card--standings">
+        <h3 class="card__heading">Итоговое табло</h3>
+        <table class="standings" id="standings-final">
+          <thead>
+            <tr>
+              <th class="standings__rank">#</th>
+              <th class="standings__name">Игрок</th>
+              <th class="standings__wins">П</th>
+              <th class="standings__diff">±</th>
+            </tr>
+          </thead>
+          <tbody id="standings-final-body"></tbody>
+        </table>
+      </div>
+
+      <!-- Полная матрица для финального экрана -->
+      <div class="card card--matrix">
+        <h3 class="card__heading">Полная таблица</h3>
+        <div class="matrix-scroll">
+          <table class="matrix" id="matrix-done"></table>
+        </div>
+      </div>
+
+      <button class="btn btn--primary btn--big" id="restart-btn">Новый турнир</button>
+    </section>
+
+  </main>
+
+  <footer class="footer">
+    <p>5 игроков · 15 партий · до 11 очков</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
