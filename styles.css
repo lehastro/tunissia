@@ -33,6 +33,7 @@
   --radius:      14px;
   --radius-sm:   10px;
   --maxw:        540px;
+  --maxw-wide:   760px;  /* для матрицы на десктопе чтобы не мотать */
 
   --ease:        cubic-bezier(.4, 0, .2, 1);
 
@@ -449,6 +450,16 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin
   padding-left: 0;
   padding-right: 0;
 }
+/* На широких экранах матрица «выходит» за пределы контейнера 540px,
+   чтобы все 15 колонок умещались без горизонтального скролла */
+@media (min-width: 760px) {
+  .card--matrix {
+    max-width: var(--maxw-wide);
+    width: calc(100vw - 2rem);
+    margin-left: 50%;
+    transform: translateX(-50%);
+  }
+}
 .card--matrix .card__heading,
 .card--matrix .standings__hint {
   padding-left: 1.25rem;
@@ -467,10 +478,10 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin
 }
 .matrix th,
 .matrix td {
-  padding: .35rem .25rem;
+  padding: .4rem .3rem;
   text-align: center;
   white-space: nowrap;
-  min-width: 32px;
+  min-width: 36px;
   border-bottom: 1px solid oklch(90% .025 80);
   border-right: 1px solid oklch(92% .02 80);
 }
