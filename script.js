@@ -166,11 +166,14 @@ function renderGame() {
 function renderStandings() {
   const stats = computeStandings();
   const tbody = $('#standings-body');
+  const hasResults = state.results.length > 0;
   tbody.innerHTML = stats.map((s, rank) => {
-    const isLeader = rank === 0 && s.played > 0;
+    const isLeader = rank === 0 && hasResults;
+    const isLast = rank === stats.length - 1 && hasResults;
+    const cls = [isLeader && 'is-leader', isLast && 'is-last'].filter(Boolean).join(' ');
     const diffClass = s.diff > 0 ? 'standings__diff--pos' : s.diff < 0 ? 'standings__diff--neg' : '';
     return `
-      <tr class="${isLeader ? 'is-leader' : ''}">
+      <tr class="${cls}">
         <td class="standings__rank">${rank + 1}</td>
         <td class="standings__name">${escapeHtml(s.name)}</td>
         <td class="standings__wins">${s.wins}</td>
@@ -354,12 +357,12 @@ function saveEditFromLi(li) {
 
 function renderDone() {
   const stats = computeStandings();
-  // Подиум — топ 3
+  // Подиум — все 5: топ-3 с медалями, 4-е без, 5-е — королева пляжа 👸
   const podium = $('#podium');
-  const medals = ['🥇', '🥈', '🥉'];
-  podium.innerHTML = stats.slice(0, 3).map((s, i) => `
+  const decorations = ['🥇', '🥈', '🥉', '4', '👸'];
+  podium.innerHTML = stats.map((s, i) => `
     <li>
-      <span class="podium__pos">${medals[i]}</span>
+      <span class="podium__pos">${decorations[i]}</span>
       <span class="podium__name">${escapeHtml(s.name)}</span>
       <span class="podium__stats">${s.wins} побед · ${fmtDiff(s.diff)}</span>
     </li>
@@ -368,9 +371,12 @@ function renderDone() {
   // Финальное табло
   const tbody = $('#standings-final-body');
   tbody.innerHTML = stats.map((s, rank) => {
+    const isLeader = rank === 0;
+    const isLast = rank === stats.length - 1;
+    const cls = [isLeader && 'is-leader', isLast && 'is-last'].filter(Boolean).join(' ');
     const diffClass = s.diff > 0 ? 'standings__diff--pos' : s.diff < 0 ? 'standings__diff--neg' : '';
     return `
-      <tr>
+      <tr class="${cls}">
         <td class="standings__rank">${rank + 1}</td>
         <td class="standings__name">${escapeHtml(s.name)}</td>
         <td class="standings__wins">${s.wins}</td>
